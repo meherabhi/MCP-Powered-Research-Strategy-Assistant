@@ -1,461 +1,511 @@
-MCP-Powered-Research-Strategy-Assistant
+MCP Agent 
 
-mcp-agent is a Python framework for building AI agents with Model Context Protocol (MCP).
+mcp-agent is a simple Python framework for building AI agents using the Model Context Protocol (MCP).
 
-The idea is to keep agent development simple:
+The main idea is simple:
 
-Connect an LLM to MCP servers, give it instructions, and build workflows using normal Python.
+MCP is enough to build useful agents, and simple patterns are often better than complicated agent architectures.
 
-It can be used for small agents as well as larger workflows with multiple agents, human input, retries, and durable execution.
-
-⸻
+It helps you connect LLMs to tools, MCP servers, workflows, and other agents without having to build everything from scratch.
 
 What does it do?
 
-mcp-agent takes care of a lot of the plumbing needed to build an agent application.
+With mcp-agent, you can:
 
-Feature	What it does
-MCP support	Connect agents to MCP servers and their tools
-LLMs	Use OpenAI, Anthropic, Google, Azure, Bedrock, and others
-Agent workflows	Build routers, planners, parallel workflows, etc.
-Multiple agents	Let agents work together on a task
-Human input	Pause a workflow and wait for approval
-Durable execution	Run long workflows using Temporal
-Observability	Logging, tracing and token tracking
-MCP servers	Expose your own agent as an MCP server
-Cloud	Deploy agents to mcp-agent Cloud
+Feature	What it means
+Build agents	Create agents that can use tools and MCP servers
+Connect MCP servers	Use tools, resources, prompts, and other MCP features
+Use different LLMs	Connect providers such as OpenAI, Anthropic, Google, and others
+Build workflows	Run agents in parallel, route requests, plan tasks, and more
+Run agents reliably	Use Temporal for long-running and durable agents
+Human input	Pause an agent and ask a person for input
+Create MCP servers	Turn your agents and workflows into MCP servers
+Deploy to the cloud	Deploy agents and MCP applications using mcp-agent Cloud
+
+Learn more in the documentation.
 
 ⸻
 
 Quick start
 
-1. Create a project
+Install
 
-We recommend using uv for Python projects.
+Using uv:
 
-mkdir my-agent
-cd my-agent
-uv init
-uv add "mcp-agent[openai]"
+uv add "mcp-agent"
 
-2. Add your API key
+Or using pip:
 
-export OPENAI_API_KEY="your-api-key"
+pip install mcp-agent
 
-You can also put your secrets in mcp_agent.secrets.yaml.
+You can also install provider-specific dependencies when needed.
 
-3. Create an agent
+A small example
 
-Create main.py:
-
-import asyncio
 from mcp_agent.app import MCPApp
 from mcp_agent.agents.agent import Agent
 from mcp_agent.workflows.llm.augmented_llm_openai import OpenAIAugmentedLLM
-app = MCPApp(name="hello_world")
+app = MCPApp(name="my-agent")
 async def main():
-    async with app.run():
+    async with app.run() as agent_app:
+        context = agent_app.context
         agent = Agent(
-            name="finder",
-            instruction="Use filesystem and fetch to answer questions.",
-            server_names=["filesystem", "fetch"],
+            name="assistant",
+            instruction="You are a helpful assistant.",
+            server_names=["fetch"],
         )
         async with agent:
             llm = await agent.attach_llm(OpenAIAugmentedLLM)
-            answer = await llm.generate_str(
-                "Summarize README.md in two sentences."
+            result = await llm.generate_str(
+                "Tell me something interesting about MCP."
             )
-            print(answer)
+            print(result)
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main())
 
-Run it:
-
-uv run main.py
-
-The basic idea looks like this:
-
-             +----------------+
-             |      Agent     |
-             +-------+--------+
-                     |
-              +------+------+
-              |             |
-        +-----v-----+ +-----v-----+
-        | Filesystem| |   Fetch   |
-        | MCP Server| | MCP Server|
-        +-----------+ +-----------+
-                     |
-                +----v----+
-                |   LLM   |
-                +---------+
+See the getting started guide for a complete example.
 
 ⸻
 
-How it works
+How does it work?
 
-There are three main pieces:
+The basic structure looks like this:
 
-                 mcp-agent
-                     |
-        +------------+------------+
-        |            |            |
-      Agent        LLM       MCP Servers
-        |            |            |
-        +------------+------------+
-                     |
-                  Result
+                 Your Application
+                       |
+                       v
+                  mcp-agent
+                       |
+          +------------+------------+
+          |                         |
+          v                         v
+       Agent                    Workflow
+          |                         |
+          +------------+------------+
+                       |
+                       v
+                     LLM
+                       |
+                       v
+                  MCP Servers
+                       |
+             +---------+---------+
+             |         |         |
+            Tools   Resources  Prompts
 
-Agent
+You can use one agent, several agents, or combine agents into larger workflows.
 
-An agent contains instructions and a list of MCP servers it can use.
+⸻
 
-agent = Agent(
-    name="researcher",
-    instruction="Research topics using web and filesystem access.",
-    server_names=["fetch", "filesystem"],
-)
+Agents
 
-LLM
+An Agent connects an LLM with one or more MCP servers.
 
-The LLM is responsible for deciding what to do with the available tools.
+For example, an agent could have access to:
 
-llm = await agent.attach_llm(OpenAIAugmentedLLM)
+* filesystem tools
+* web search
+* databases
+* APIs
+* internal company tools
+* other MCP servers
 
-You can then ask it to perform a task:
+Agents can also be exposed as MCP servers themselves.
 
-result = await llm.generate_str(
-    "Find information about MCP and summarize it."
-)
+Read more about agents.
 
-MCP servers
+⸻
 
-MCP servers provide the actual tools.
+LLMs
 
-For example:
+mcp-agent provides an Augmented LLM interface.
 
-filesystem
-fetch
-slack
-jira
-database
-github
+This gives the LLM access to:
 
-You can use existing MCP servers or create your own.
+* MCP tools
+* MCP resources
+* prompts
+* agent instructions
+* application context
+
+Different LLM providers can be used without changing the rest of your application.
+
+See the Augmented LLM documentation.
 
 ⸻
 
 MCP servers
 
-MCP servers are configured in mcp_agent.config.yaml.
+MCP is the main way mcp-agent connects agents to tools and data.
+
+It supports the MCP features you would expect, including:
+
+* Tools
+* Resources
+* Prompts
+* Notifications
+* OAuth
+* Sampling
+* Elicitation
+* Roots
+
+You can connect to existing MCP servers or build your own.
+
+Learn more about MCP.
+
+Connecting to MCP servers
+
+You can configure MCP servers in your application configuration.
 
 For example:
 
-execution_engine: asyncio
 mcp:
   servers:
     fetch:
       command: "uvx"
-      args: ["mcp-server-fetch"]
-    filesystem:
-      command: "npx"
       args:
-        - "-y"
-        - "@modelcontextprotocol/server-filesystem"
-        - "/path/to/your/files"
-openai:
-  default_model: gpt-4o
+        - "mcp-server-fetch"
 
-An agent can then use these servers:
-
-agent = Agent(
-    name="finder",
-    instruction="Use files and the web to answer questions.",
-    server_names=["filesystem", "fetch"],
-)
-
-The nice part is that the agent does not need to know how the MCP server works internally.
+See connecting to MCP servers.
 
 ⸻
 
 Agent workflows
 
-For simple applications, one agent may be enough.
+One of the main reasons to use mcp-agent is that agents can be combined into workflows.
 
-For more complicated tasks, mcp-agent provides a few common workflow patterns.
+The project focuses on simple patterns that are easy to understand and modify.
 
-Parallel
+More examples are available in the workflow documentation.
 
-Run several agents at the same time and combine their results.
+Parallel workflows
 
-                  Request
-                     |
-          +----------+----------+
-          |          |          |
-        Agent A    Agent B    Agent C
-          |          |          |
-          +----------+----------+
-                     |
-                  Result
+Run multiple agents at the same time.
 
-Useful when different agents can work independently.
+             Input
+               |
+       +-------+-------+
+       |       |       |
+       v       v       v
+    Agent A Agent B Agent C
+       |       |       |
+       +-------+-------+
+               |
+               v
+             Result
+
+This is useful when several independent tasks can be completed at the same time.
+
+See the Map-Reduce example.
 
 ⸻
 
 Router
 
-Send a request to the most appropriate agent.
+A router decides which agent should handle a request.
 
-                    Request
-                       |
-                     Router
-                 /      |      \
-                /       |       \
-          Research    Coding    Writing
+                Request
+                   |
+                   v
+                 Router
+              /    |    \
+             /     |     \
+            v      v      v
+         Agent A Agent B Agent C
 
-Useful when your application has several specialised agents.
+This is useful when different types of requests need different agents.
+
+See the Router documentation.
 
 ⸻
 
-Orchestrator
+Intent classifier
 
-One agent creates a plan and coordinates other agents.
+An intent classifier first figures out what the user wants and then sends the request to the right workflow.
+
+See the Intent Classifier documentation.
+
+⸻
+
+Orchestrator and workers
+
+One agent can coordinate several other agents.
 
                  Orchestrator
-                 /     |     \
                 /      |      \
+               /       |       \
+              v        v        v
            Worker A  Worker B  Worker C
 
-Useful for larger tasks where the work needs to be broken into smaller pieces.
+The orchestrator can break a large task into smaller tasks and distribute them to other agents.
 
 ⸻
 
-Evaluator / Optimizer
+Deep research
 
-Generate a result, evaluate it, and improve it when needed.
+For research-heavy tasks, agents can:
 
-       Generate
-           |
-           v
-        Evaluate
-        /      \
-      Good      Bad
-       |         |
-       v         v
-      Done     Improve
-                  |
-                  +----> Evaluate
+1. Plan the research
+2. Search for information
+3. Delegate work
+4. Review results
+5. Combine the results
+6. Produce a final answer
+
+See the Deep Research pattern.
 
 ⸻
 
-Other patterns
+Evaluator-optimizer
 
-mcp-agent also includes patterns for:
+One agent creates an answer and another agent checks it.
 
-* Deep research
-* Intent classification
-* Multi-agent handoffs / swarm
-* Map-reduce
-* Workflow composition
+       Task
+         |
+         v
+     Generator
+         |
+         v
+     Evaluator
+       /   \
+      /     \
+   Good?    No
+    |        |
+    v        v
+ Result    Improve
+             |
+             +----> Generator
 
-See the workflow documentation.
+This is useful when the quality of the output matters more than simply getting a first answer.
+
+See the Evaluator-Optimizer documentation.
 
 ⸻
 
-Durable execution
+Swarm
 
-For small applications, asyncio is usually enough.
+A swarm lets multiple agents work together without requiring one central orchestrator.
 
-For longer-running workflows, you can use Temporal as the execution engine.
+See the Swarm documentation.
 
-Change:
+⸻
 
-execution_engine: asyncio
+Durable agents
 
-to:
+Some agent tasks take a long time.
 
-execution_engine: temporal
+For example:
 
-This gives workflows support for things like:
+* research jobs
+* data processing
+* multi-step workflows
+* tasks that need human approval
+* jobs that should survive restarts
 
-* Retries
-* Long-running tasks
-* Pause and resume
-* Human approval
-* Recovery after failures
-* Durable workflow history
+mcp-agent can use Temporal for durable execution.
 
-The goal is that you don’t have to completely rewrite your agent when moving from a simple application to a production workflow.
+This allows workflows to:
+
+* pause
+* resume
+* retry
+* recover after failures
+* run for long periods
+
+The agent code does not need to change significantly when moving to durable execution.
+
+Learn more in the durable agents documentation.
+
+Examples are available in the Temporal examples.
 
 ⸻
 
 Human input
 
-Some workflows need a person to approve something before continuing.
+Agents sometimes need a person to make a decision.
 
 For example:
 
-response = await self.context.request_human_input(
-    HumanInputRequest(
-        prompt="Approve the draft?",
-        required=True,
-    )
-)
+Agent
+  |
+  v
+Needs approval
+  |
+  v
+Ask human
+  |
+  v
+Continue workflow
 
-The workflow can pause until the user responds.
+mcp-agent supports workflows that pause and wait for human input.
 
-This can be useful for:
-
-* Approving generated content
-* Reviewing emails
-* Confirming actions
-* Approving deployments
+See the human-in-the-loop documentation.
 
 ⸻
 
 Build your own MCP server
 
-You can also expose an mcp-agent application as an MCP server.
+You can also use mcp-agent to create MCP servers.
 
-For example:
+This means you can build an agent or workflow and expose it as an MCP server that other applications can connect to.
 
-from mcp_agent.server import create_mcp_server_for_app
-@app.tool
-def grade_story(story: str) -> str:
-    return "Report..."
-server = create_mcp_server_for_app(app)
-server.run_stdio()
+Your Agent / Workflow
+          |
+          v
+     MCP Server
+          |
+     +----+----+
+     |         |
+     v         v
+  ChatGPT   Other Apps
 
-This allows MCP clients such as Claude, Cursor, or your own applications to call your agent.
+See Agent as an MCP Server.
 
-       MCP Client
-           |
-           v
-    Your MCP Server
-           |
-           v
-      mcp-agent
-           |
-      +----+----+
-      |         |
-    Agent     Tools
+There are also examples in the MCP examples directory.
 
 ⸻
 
 Configuration
 
-Most applications use two configuration files.
-
-mcp_agent.config.yaml
-
-Used for application configuration.
-
-For example:
+A basic application configuration can look like this:
 
 execution_engine: asyncio
 logger:
-  transports: [console]
-  level: info
+  type: file
+  path: "mcp-agent.log"
 mcp:
   servers:
     fetch:
       command: "uvx"
-      args: ["mcp-server-fetch"]
+      args:
+        - "mcp-server-fetch"
 openai:
-  default_model: gpt-4o-mini
+  default_model: "gpt-4o"
 
-mcp_agent.secrets.yaml
+Configuration can also be done directly in Python.
 
-Used for API keys and other secrets.
+See the configuration documentation.
 
-openai:
-  api_key: "${OPENAI_API_KEY}"
+Secrets can be configured separately so that API keys do not need to be stored directly in your code.
 
-Do not commit this file to git.
-
-You can also use environment variables instead.
+See specifying secrets.
 
 ⸻
 
 Supported LLM providers
 
-mcp-agent is not tied to a single model provider.
+mcp-agent supports several LLM providers through its augmented LLM interfaces.
 
-Currently supported providers include:
+Depending on your setup, you can use providers such as:
 
 * OpenAI
 * Anthropic
 * Google
-* Azure
-* AWS Bedrock
+* Azure OpenAI
+* Amazon Bedrock
+* OpenRouter
+* Ollama
+* LiteLLM
 
-Install the providers you need:
-
-uv add "mcp-agent[openai,anthropic,google]"
+The goal is to keep the agent and workflow code mostly independent of the model provider.
 
 ⸻
 
 Logging and observability
 
-Basic logging can be enabled in the configuration:
+mcp-agent provides structured logging and observability support.
 
-logger:
-  transports: [console]
-  level: info
+You can use:
 
-You can also enable OpenTelemetry:
+* structured logs
+* OpenTelemetry
+* token counting
+* workflow-level information
+* agent execution information
 
-otel:
-  enabled: true
-  exporters:
-    - console
-
-Token usage can also be tracked programmatically.
+See the observability documentation.
 
 ⸻
 
 CLI
 
-mcp-agent includes a small CLI for creating and deploying projects.
+The project includes a command-line interface.
 
-Create a project:
+For example:
 
 uvx mcp-agent init
 
-Log in:
+This creates a new project.
 
-uvx mcp-agent login
-
-Deploy:
+You can also deploy an agent:
 
 uvx mcp-agent deploy my-agent
+
+See the CLI documentation.
 
 ⸻
 
 Cloud
 
-You can deploy an mcp-agent application to mcp-agent Cloud.
+mcp-agent also has a cloud option for deploying agents and MCP applications.
 
-uvx mcp-agent login
-uvx mcp-agent deploy my-agent
+You can:
 
-Cloud deployment provides a managed environment for running agents and durable workflows.
+* deploy agents
+* run agents as MCP servers
+* connect applications to deployed agents
+* use managed infrastructure
 
-See the Cloud documentation for details.
+See the Cloud documentation.
+
+Cloud quickstart
+
+Start here:
+
+https://docs.mcp-agent.com/get-started/cloud
+
+There are also cloud examples.
+
+⸻
+
+Authentication
+
+Authentication can be handled using:
+
+* API keys and secrets
+* OAuth
+* server authentication
+
+See the authentication documentation.
+
+For MCP server authentication, see server authentication.
+
+⸻
+
+Composing applications
+
+Larger applications can be built by combining smaller agents and workflows.
+
+This makes it possible to keep each part of the system relatively simple.
+
+See the composition documentation.
 
 ⸻
 
 Project structure
 
-A small project can be as simple as:
+A typical project can look something like:
 
 my-agent/
-├── main.py
 ├── mcp_agent.config.yaml
-├── mcp_agent.secrets.yaml
-└── pyproject.toml
+├── main.py
+├── agents/
+├── workflows/
+├── servers/
+└── README.md
 
-As the application grows, agents and workflows can be moved into separate files.
+The exact structure is up to you.
 
 ⸻
 
@@ -463,15 +513,13 @@ Installation
 
 Using uv:
 
-uv add mcp-agent
+uv add "mcp-agent"
 
 Using pip:
 
 pip install mcp-agent
 
-For OpenAI:
-
-uv add "mcp-agent[openai]"
+We recommend using uv for new Python projects.
 
 ⸻
 
@@ -479,77 +527,66 @@ Examples
 
 The repository contains examples for different use cases.
 
-Examples:
+You can find them here:
+
 https://github.com/lastmile-ai/mcp-agent/tree/main/examples
 
-Some of the examples include:
+Some useful examples include:
 
-* Basic agents
 * MCP servers
-* Multiple agents
-* Agent workflows
+* workflows
+* parallel agents
+* routers
+* deep research
 * Temporal
-* Human input
-* Authentication
-* Cloud deployment
+* Cloud
+* human-in-the-loop workflows
 
 ⸻
 
 Documentation
 
-The full documentation is available at:
+The main documentation is here:
 
 https://docs.mcp-agent.com
 
-Useful pages:
+Some useful pages:
 
-* Getting started
+* Welcome
+* Quickstart
 * SDK overview
+* Core components
+* Agents
+* Augmented LLMs
+* Workflows
+* Configuration
+* CLI
 * MCP integration
-* Agent workflows
-* Durable agents
 * Cloud
 
-For LLMs, the complete documentation is also available as:
+For LLMs and AI coding tools, the project also provides:
 
-https://docs.mcp-agent.com/llms-full.txt
+* llms.txt
+* llms-full.txt
+* MCP documentation server
 
 ⸻
 
 Why mcp-agent?
 
-There are already many frameworks for building AI agents.
+There are many ways to build AI agents.
 
-The main reason to use mcp-agent is if you want to build around MCP without having to manually handle all the MCP connections and workflow plumbing.
+mcp-agent focuses on keeping things simple.
 
-It tries to keep things fairly simple:
+The main ideas are:
 
-* Write Python
-* Connect MCP servers
-* Give agents instructions
-* Combine agents when needed
-* Use Temporal when workflows become more complicated
+1. Use MCP for tools and integrations.
+2. Use simple workflow patterns instead of large agent frameworks.
+3. Keep agents composable.
+4. Make workflows easy to test and understand.
+5. Support durable execution when needed.
+6. Allow agents to work with different LLM providers.
 
-You don’t need to build your application as a complicated graph just to add some branching logic.
-
-⸻
-
-Contributing
-
-Contributions are welcome.
-
-You can help by:
-
-* Fixing bugs
-* Adding examples
-* Improving documentation
-* Adding features
-* Reporting issues
-
-See CONTRIBUTING.md to get started.
+The workflow patterns are based in part on Anthropic’s Building Effective Agents.
 
 ⸻
-
-License
-
-Apache 2.0
