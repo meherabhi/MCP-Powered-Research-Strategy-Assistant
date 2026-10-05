@@ -1,0 +1,20 @@
+Company: Nova Motors
+
+2025 Revenue: $4.2 billion
+
+Primary Markets:
+- India
+- Southeast Asia
+
+EV Revenue: $800 million
+
+EV Strategy:
+Nova Motors plans to increase EV production capacity by
+40% over the next three years.
+
+Key Risk:
+Battery cells are currently sourced primarily from one
+supplier.
+
+Management Objective:
+Increase EV revenue to 35% of total company revenue by 2030.
